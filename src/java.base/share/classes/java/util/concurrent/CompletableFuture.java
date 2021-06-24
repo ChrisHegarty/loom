@@ -1767,6 +1767,9 @@ public class CompletableFuture<T> implements Future<T>, CompletionStage<T> {
     static final class AsyncSupply<T> extends ForkJoinTask<Void>
         implements Runnable, AsynchronousCompletionTask {
         CompletableFuture<T> dep; Supplier<? extends T> fn;
+
+        private ScopeLocal.Snapshot snapshot = ScopeLocal.snapshot();
+
         AsyncSupply(CompletableFuture<T> dep, Supplier<? extends T> fn) {
             this.dep = dep; this.fn = fn;
         }
@@ -1775,7 +1778,7 @@ public class CompletableFuture<T> implements Future<T>, CompletionStage<T> {
         public final void setRawResult(Void v) {}
         public final boolean exec() { run(); return false; }
 
-        public void run() {
+        private void doRun() {
             CompletableFuture<T> d; Supplier<? extends T> f;
             if ((d = dep) != null && (f = fn) != null) {
                 dep = null; fn = null;
@@ -1787,6 +1790,14 @@ public class CompletableFuture<T> implements Future<T>, CompletionStage<T> {
                     }
                 }
                 d.postComplete();
+            }
+        }
+
+        public void run() {
+            if (snapshot != ScopeLocal.snapshot()) {
+                snapshot.run(this::doRun);
+            } else {
+                doRun();
             }
         }
     }

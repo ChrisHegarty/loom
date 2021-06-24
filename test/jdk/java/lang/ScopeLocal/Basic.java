@@ -30,6 +30,7 @@
 
 import java.util.NoSuchElementException;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicReference;
@@ -408,6 +409,50 @@ public class Basic {
             assertEqualsInSnapshot(snapshot, name, "joe");
             return null;
         });
+    }
+
+    public void testCFSupplyAsyncInheritance() throws Exception {
+        ScopeLocal<String> name = ScopeLocal.inheritableForType(String.class);
+        CompletableFuture<String> cf = ScopeLocal.where(name, "Jason")
+                .call(() -> CompletableFuture.supplyAsync(() -> "Hello " + name.get()));
+        assertEquals(cf.get(), "Hello Jason");
+    }
+
+    public void testCFSupplyAsyncInheritance1() throws Exception {
+        ScopeLocal<String> name = ScopeLocal.inheritableForType(String.class);
+        CompletableFuture<String> cf = ScopeLocal.where(name, "John")
+                .call(() -> CompletableFuture.supplyAsync(() -> "Hello ").thenApply(s -> s + name.get()));
+        assertEquals(cf.get(), "Hello John");
+    }
+
+    public void testCFSupplyAsyncInheritance2() throws Exception {
+        ScopeLocal<String> name = ScopeLocal.inheritableForType(String.class);
+        CompletableFuture<String> cf = ScopeLocal.where(name, "Jack")
+                .call(() -> CompletableFuture.supplyAsync(() -> "Hello ").thenApplyAsync(s -> s + name.get()));
+        assertEquals(cf.get(), "Hello Jack");
+    }
+
+    public void testCFRunAsyncInheritance() throws Exception {
+        ScopeLocal<String> name = ScopeLocal.inheritableForType(String.class);
+        AtomicReference<String> ref = new AtomicReference<>();
+        CompletableFuture<Void> cf = ScopeLocal.where(name, "Jim")
+                .call(() -> CompletableFuture.runAsync(() -> ref.set(name.get())));
+        cf.join();
+        assertEquals(ref.get(), "Jim");
+    }
+
+    public void testCFRunAsyncInheritance1() throws Exception {
+        ScopeLocal<String> name = ScopeLocal.inheritableForType(String.class);
+        CompletableFuture<String> cf = ScopeLocal.where(name, "Jones")
+                .call(() -> CompletableFuture.runAsync(() -> { }).thenApply(((Void v) -> name.get())));
+        assertEquals(cf.get(), "Jones");
+    }
+
+    public void testCFRunAsyncInheritance2() throws Exception {
+        ScopeLocal<String> name = ScopeLocal.inheritableForType(String.class);
+        CompletableFuture<String> cf = ScopeLocal.where(name, "Joseph")
+                .call(() -> CompletableFuture.runAsync(() -> { }).thenApplyAsync(((Void v) -> name.get())));
+        assertEquals(cf.get(), "Joseph");
     }
 
     private <R> R callWithSnapshot(ScopeLocal.Snapshot snapshot, Callable<R> c) {
